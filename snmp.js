@@ -1,12 +1,11 @@
 var snmp = require ("net-snmp");
-// var store = snmp.createModuleStore ();
+var MIB = require('./lib/mib');
+var mib = new MIB();
+mib.LoadMIBs();
 var options = {
   port:162
 }
-// var mibDir= 'D:\\Program Files\\DudeBeta3\\data\\files\\mibs\\'
-// store.loadFromFile (mibDir + "V1600D_20210909-MIB.txt");
 
-providers = store.getProvidersForModule ("V1600D-MIB");
 
 var getSnmp = function(ip, community, oid, callback) {
   var session = snmp.createSession (ip, community);
@@ -35,6 +34,36 @@ var walkSnmp = function(ip, community, oid, callback) {
   session.subtree (oid, maxRepetitions, feedCb, doneCb);
 }
 
+function sortInt (a, b) {
+	if (a > b)
+		return 1;
+	else if (b > a)
+		return -1;
+	else
+		return 0;
+}
+
+var delimiter2bracket = function (json, delimiter) {
+  // console.log('JSON:',json)
+	/*  ____________________________
+	 *	Convert a delimeted Object to JSON 
+	    ____________________________*/
+	var bracket = {}, t, parts, part;
+	for (var k in json) {
+		t = bracket;
+		parts = k.split(delimiter);
+
+		var key = parts.pop(); //last part
+
+		while (parts.length) {
+			part = parts.shift(); //first part
+			t = t[part] = t[part] || {};
+		}
+		t[key] = json[k];//set value
+	}
+	return bracket;
+}
+
 function doneCb (error) {
   if (error)
       console.error (error.toString ());
@@ -56,43 +85,74 @@ function feedCb (varbinds,callback) {
 
 
 const subtree = (ip, community, oid,callback) => {
+  community = community || 'public'
   const promise = new Promise((resolve, reject) => {
+    try {
+    var NameSpaceTable = {};
     const session = snmp.createSession(ip, community, options);
     const oidsData = [];
+    var NameSpace = {};
     session.subtree(
       oid,
       (varbinds) => {
+     
         resultObject = {oid: oid};
-        for (var i = 0; i < varbinds.length; i++) {
-          if (snmp.isVarbindError(varbinds[i])) {
-            console.log(snmp.varbindError(varbinds[i]));
-          } else {
-            oidsData.push({ oid: varbinds[i].oid, value: varbinds[i].value.toString() });
+        mib.DecodeVarBinds(varbinds, function (Varbinds) {
+          // console.log('Varbinds')
+          // console.log(Varbinds)
+          for (var i = 0; i < Varbinds.length; i++) {
+            // console.log(Varbinds[i])
+            if (snmp.isVarbindError(Varbinds[i])) {
+              console.log(snmp.varbindError(Varbinds[i]));
+            } else {
+              key=Varbinds[i].oid+'.'+Varbinds[i].ObjectName
+              NameSpace[key] = Varbinds[i].Value.toString() 
+              // oidsData.push({ oid: varbinds[i].oid, value: varbinds[i].value.toString() });
+            }
+            if (i==Varbinds.length-1) {
+              // console.log(i)
+              NameSpaceTable = delimiter2bracket(NameSpace, '.');
+              resultObject.data = NameSpaceTable;
+              // console.log(JSON.stringify(NameSpaceTable, null, 4))
+              // resolve(NameSpaceTable);
+            }
           }
-        }
-        resultObject.data = oidsData;
-        //resolve(oidsData);
+            
+    
+          //resolve(oidsData);
+        });
+
       },
       (error) => {
         //reject(error);
         if ( error ) {
-            reject(error);
+            // reject(error);
+
+            resolve({"error":error.syscall +' '+ error.code})
         } else {
           // console.log(oidsData)
-            resolve({oid:oid,value:oidsData});
+          resolve(NameSpaceTable);
         }
       }
     );
+  }
+  catch(error)
+  {
+    resolve(error)
+  }
   }).then((result) => {
     
     // console.log(result)
     callback(result)
   });
 }
-const getOids = (ip, community, oids,callback) => {
+
+const getOidsSubtree = (ip, community, oids,callback) => {
   var response ={}
   response.oids = [];
   for(const oid of oids )  {
+    mib.GetObject(oid, function (Object) {
+    console.log(Object.OID)
     subtree(ip, community, oid, (result) => {
       response.oids.push(result);
       if (response.oids.length === oids.length) {
@@ -100,15 +160,19 @@ const getOids = (ip, community, oids,callback) => {
         callback(response);
       }
     });
+  });
   }
 }
+
+
+
 
 const subtreetoArrayofObjects = (ips, community, oids,callback) => {
   const promise = new Promise((resolve, reject) => {
     var results =[]
      
     for (const ip of ips) { 
-      getOids(ip, community, oids, (result) => {
+      getOidsSubtree(ip, community, oids, (result) => {
         result.ip = ip
         results.push(result)
         if (results.length === ips.length) {
