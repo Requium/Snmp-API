@@ -34,33 +34,29 @@ var walkSnmp = function(ip, community, oid, callback) {
   session.subtree (oid, maxRepetitions, feedCb, doneCb);
 }
 
-function sortInt (a, b) {
-	if (a > b)
-		return 1;
-	else if (b > a)
-		return -1;
-	else
-		return 0;
-}
-
 var delimiter2bracket = function (json, delimiter) {
+  // console.log(json)
+  // console.log('JSON',json)
   // console.log('JSON:',json)
 	/*  ____________________________
 	 *	Convert a delimeted Object to JSON 
 	    ____________________________*/
+  var ts = []
 	var bracket = {}, t, parts, part;
 	for (var k in json) {
 		t = bracket;
 		parts = k.split(delimiter);
 
 		var key = parts.pop(); //last part
-
 		while (parts.length) {
+      // console.log(parts)
 			part = parts.shift(); //first part
 			t = t[part] = t[part] || {};
 		}
 		t[key] = json[k];//set value
+    ts.push(t)
 	}
+  // console.log(bracket)
 	return bracket;
 }
 
@@ -90,13 +86,14 @@ const subtree = (ip, community, oid,callback) => {
     try {
     var NameSpaceTable = {};
     const session = snmp.createSession(ip, community, options);
-    const oidsData = [];
+    var oidsData 
     var NameSpace = {};
     session.subtree(
       oid,
       (varbinds) => {
      
-        resultObject = {oid: oid};
+        resultObject = {oid: oid,data:[]};
+
         mib.DecodeVarBinds(varbinds, function (Varbinds) {
           // console.log('Varbinds')
           // console.log(Varbinds)
@@ -104,15 +101,17 @@ const subtree = (ip, community, oid,callback) => {
             // console.log(Varbinds[i])
             if (snmp.isVarbindError(Varbinds[i])) {
               console.log(snmp.varbindError(Varbinds[i]));
+              resolve ()
             } else {
-              key=Varbinds[i].oid+'.'+Varbinds[i].ObjectName
+              key=Varbinds[i].oid+','+Varbinds[i].ObjectName
               NameSpace[key] = Varbinds[i].Value.toString() 
               // oidsData.push({ oid: varbinds[i].oid, value: varbinds[i].value.toString() });
             }
             if (i==Varbinds.length-1) {
               // console.log(i)
-              NameSpaceTable = delimiter2bracket(NameSpace, '.');
-              resultObject.data = NameSpaceTable;
+              // console.log(NameSpace)
+              NameSpaceTable = delimiter2bracket(NameSpace, ',');
+              oidsData = NameSpaceTable;
               // console.log(JSON.stringify(NameSpaceTable, null, 4))
               // resolve(NameSpaceTable);
             }
@@ -130,8 +129,14 @@ const subtree = (ip, community, oid,callback) => {
 
             resolve({"error":error.syscall +' '+ error.code})
         } else {
-          // console.log(oidsData)
-          resolve(NameSpaceTable);
+
+          for (object in oidsData) {
+            if(oidsData.hasOwnProperty(object)) {
+              resultObject.data.push(oidsData[object]) 
+            }
+     
+          }
+          resolve(resultObject);
         }
       }
     );
