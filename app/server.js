@@ -45,7 +45,7 @@ app.post('/walk', function(req, res) {
   if(req.body !== undefined){
     if (crypto.timingSafeEqual(
       hash.copy().update(req.body.apiKey).digest(),
-      hash.copy().update('VkVGZHYzOEJOd1A1bnZob2dvNFQ6RW55R05tbERTM0ttRzc0MUUwR19zZw==').digest()
+      hash.copy().update(process.env('AGENT_TOKEN')).digest()
     )) {
       snmp.walkSnmp(req.body.ip, req.body.community, req.body.oid, function(error, varbinds){
         if(error){
@@ -70,9 +70,14 @@ app.post('/subtreetoarrayofobject', validate({ body: validatorSubtree.subtreeSch
   console.log(req.body)
  
   if(req.body !== undefined){
+    if(process.env.AGENT_TOKEN == undefined){
+      res.status(500).send('enviroment_variable Not configured');
+    }
+    else{
+    console.log(process.env.AGENT_TOKEN)
     if (crypto.timingSafeEqual(
       hash.copy().update(req.body.apiKey).digest(),
-      hash.copy().update('VkVGZHYzOEJOd1A1bnZob2dvNFQ6RW55R05tbERTM0ttRzc0MUUwR19zZw==').digest()
+      hash.copy().update(process.env.AGENT_TOKEN).digest()
     )) {
       snmp.subtreetoArrayofObjects(req.body.ip, req.body.community, req.body.oid, function(error, varbinds){
         if(error){
@@ -87,9 +92,11 @@ app.post('/subtreetoarrayofobject', validate({ body: validatorSubtree.subtreeSch
       res.status(401).send('unauthorized');
     }
   }
-  else{
-    res.status(401).send('unauthorized');
   }
+  else{
+    res.status(400).send('No Arguments added');
+  }
+  
 
 })
 

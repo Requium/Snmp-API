@@ -127,7 +127,7 @@ const subtree = (ip, community, oid,callback) => {
         if ( error ) {
             // reject(error);
 
-            resolve({"error":error.syscall +' '+ error.code})
+            resolve({"error":error})
         } else {
 
           for (object in oidsData) {
