@@ -157,11 +157,11 @@ const getOidsSubtree = (ip, community, oids,callback) => {
   response.oids = [];
   for(const oid of oids )  {
     mib.GetObject(oid, function (Object) {
-    console.log(Object.OID)
+    // console.log(Object.OID)
     subtree(ip, community, oid, (result) => {
       response.oids.push(result);
       if (response.oids.length === oids.length) {
-        console.log('entrada')
+        // console.log('entrada')
         callback(response);
       }
     });
@@ -181,7 +181,7 @@ const subtreetoArrayofObjects = (ips, community, oids,callback) => {
         result.ip = ip
         results.push(result)
         if (results.length === ips.length) {
-          console.log(results)
+          // console.log(results)
           resolve(results)
         }
         // console.log(results)
@@ -192,7 +192,7 @@ const subtreetoArrayofObjects = (ips, community, oids,callback) => {
 
   }
   ).then(result => {
-    console.log(result)
+    // console.log(result)
     callback(result)
   } );
 }

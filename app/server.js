@@ -67,14 +67,14 @@ app.post('/walk', function(req, res) {
 })
 
 app.post('/subtreetoarrayofobject', validate({ body: validatorSubtree.subtreeSchema }), function(req, res) {
-  console.log(req.body)
+  // console.log(req.body)
  
   if(req.body !== undefined){
     if(process.env.AGENT_TOKEN == undefined){
       res.status(500).send('enviroment_variable Not configured');
     }
     else{
-    console.log(process.env.AGENT_TOKEN)
+    // console.log(process.env.AGENT_TOKEN)
     if (crypto.timingSafeEqual(
       hash.copy().update(req.body.apiKey).digest(),
       hash.copy().update(process.env.AGENT_TOKEN).digest()
