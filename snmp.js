@@ -155,6 +155,7 @@ const subtree = (ip, community, oid,callback) => {
 const getOidsSubtree = (ip, community, oids,callback) => {
   var response ={}
   response.oids = [];
+  // console.log(oids)
   for(const oid of oids )  {
     mib.GetObject(oid, function (Object) {
     // console.log(Object.OID)
@@ -172,10 +173,14 @@ const getOidsSubtree = (ip, community, oids,callback) => {
 
 
 
-const subtreetoArrayofObjects = (ips, community, oids,callback) => {
+const subtreetoArrayofObjects = (ips,community, oids,callback) => {
   const promise = new Promise((resolve, reject) => {
     var results =[]
-     
+    // if (port !== undefined)
+    // {
+    //   options.port = port
+    // }
+    // console.log(oids)
     for (const ip of ips) { 
       getOidsSubtree(ip, community, oids, (result) => {
         result.ip = ip
